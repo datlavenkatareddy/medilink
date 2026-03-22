@@ -1,0 +1,128 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            Int             @id @default(autoincrement())
+  email         String          @unique
+  password      String
+  role          String          // "patient", "doctor", "hospital_admin", "system_admin"
+  name          String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  patient       Patient?
+  doctor        Doctor?
+  hospitalAdmin HospitalAdmin?
+  systemAdmin   SystemAdmin?
+}
+
+model Patient {
+  id               Int               @id @default(autoincrement())
+  userId           Int               @unique
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  appointments     Appointment[]
+  medicalRecords   MedicalRecord[]
+  diagnosisReports DiagnosisReport[]
+}
+
+model Doctor {
+  id            Int               @id @default(autoincrement())
+  userId        Int               @unique
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hospitalId    Int
+  hospital      Hospital          @relation(fields: [hospitalId], references: [id])
+  departmentId  Int
+  department    Department        @relation(fields: [departmentId], references: [id])
+  appointments  Appointment[]
+  schedules     DoctorSchedule[]
+}
+
+model HospitalAdmin {
+  id          Int       @id @default(autoincrement())
+  userId      Int       @unique
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hospitalId  Int
+  hospital    Hospital  @relation(fields: [hospitalId], references: [id])
+}
+
+model SystemAdmin {
+  id      Int    @id @default(autoincrement())
+  userId  Int    @unique
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Hospital {
+  id               Int               @id @default(autoincrement())
+  name             String
+  location         String
+  image            String?
+  isActive         Boolean           @default(true)
+  doctors          Doctor[]
+  admins           HospitalAdmin[]
+  appointments     Appointment[]
+  medicalRecords   MedicalRecord[]
+  diagnosisReports DiagnosisReport[]
+}
+
+model Department {
+  id        Int      @id @default(autoincrement())
+  name      String
+  doctors   Doctor[]
+}
+
+model DoctorSchedule {
+  id        Int      @id @default(autoincrement())
+  doctorId  Int
+  doctor    Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  dayOfWeek Int      // 0-6 (Sunday-Saturday)
+  startTime String   // e.g., "09:00"
+  endTime   String   // e.g., "17:00"
+}
+
+model Appointment {
+  id            Int            @id @default(autoincrement())
+  patientId     Int
+  patient       Patient        @relation(fields: [patientId], references: [id])
+  doctorId      Int
+  doctor        Doctor         @relation(fields: [doctorId], references: [id])
+  hospitalId    Int
+  hospital      Hospital       @relation(fields: [hospitalId], references: [id])
+  time          DateTime
+  status        String         // "scheduled", "completed", "cancelled"
+  prescriptions Prescription[]
+}
+
+model Prescription {
+  id            Int         @id @default(autoincrement())
+  appointmentId Int
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  details       String
+  createdAt     DateTime    @default(now())
+}
+
+model MedicalRecord {
+  id          Int      @id @default(autoincrement())
+  patientId   Int
+  patient     Patient  @relation(fields: [patientId], references: [id])
+  hospitalId  Int
+  hospital    Hospital @relation(fields: [hospitalId], references: [id])
+  description String
+  date        DateTime @default(now())
+}
+
+model DiagnosisReport {
+  id          Int      @id @default(autoincrement())
+  patientId   Int
+  patient     Patient  @relation(fields: [patientId], references: [id])
+  hospitalId  Int
+  hospital    Hospital @relation(fields: [hospitalId], references: [id])
+  reportUrl   String?
+  notes       String?
+  date        DateTime @default(now())
+}
